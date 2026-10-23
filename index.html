@@ -1,1 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>SysPulse</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script>
+  // Dark by default; light only if the visitor chose it before.
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('theme'); } catch (e) {}
+    if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+<style>
+  /* Layout: one quiet column. Huge two-line name, big statement, two cards, a compare table, run steps. */
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --surface: #0d0d0f;
+    --text: #ffffff;
+    --muted: #9b9ba5;
+    --line: #232328;
+    --accent: #2563eb;
+    --accent-ink: #60a5fa;
+    --inv-bg: #ffffff;
+    --inv-fg: #000000;
+    --glass: rgba(13, 13, 15, 0.85);
+    --hover-line: rgba(96, 165, 250, 0.45);
+    --shadow: rgba(37, 99, 235, 0.28);
+    --radius: 14px;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
 
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f9f9fb;
+    --surface: #ffffff;
+    --text: #000000;
+    --muted: #5c5c66;
+    --line: #e5e5ea;
+    --accent-ink: #2563eb;
+    --inv-bg: #000000;
+    --inv-fg: #ffffff;
+    --glass: rgba(255, 255, 255, 0.85);
+    --hover-line: rgba(37, 99, 235, 0.35);
+    --shadow: rgba(0, 0, 0, 0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding-left: max(24px, env(safe-area-inset-left, 0px));
+    padding-right: max(24px, env(safe-area-inset-right, 0px));
+  }
+
+  /* Controls: theme + language */
+  .controls {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+  }
+
+  .lang, .theme {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 64px;
+    padding: 3px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+
+  .lang:focus-visible, .theme:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 3px;
+  }
+
+  .lang-thumb, .theme-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    background: var(--inv-bg);
+    border-radius: 999px;
+    transition: transform 0.4s var(--ease), background-color 0.45s ease;
+  }
+
+  :root:not([data-theme="light"]) .theme-thumb,
+  .lang[data-current="ru"] .lang-thumb { transform: translateX(100%); }
+
+  .lang-opt, .theme-opt {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    transition: color 0.35s ease;
+  }
+
+  .lang-opt { padding: 7px 0; line-height: 1; }
+  .lang-opt.is-active { color: var(--inv-fg); }
+
+  .theme-opt svg { width: 15px; height: 15px; }
+
+  /* Sun sits left, moon right. The icon under the thumb takes the thumb's contrast color. */
+  .theme .sun { color: var(--muted); }
+  .theme .moon { color: var(--inv-fg); }
+  :root[data-theme="light"] .theme .sun { color: var(--inv-fg); }
+  :root[data-theme="light"] .theme .moon { color: var(--muted); }
+
+  html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+    transition: background-color 0.45s ease, color 0.45s ease, border-color 0.45s ease,
+                box-shadow 0.45s ease, transform 0.4s var(--ease), opacity 0.22s ease !important;
+  }
+
+  [data-i18n], [data-lines] { transition: opacity 0.22s ease; }
+  .is-fading { opacity: 0; }
+
+  /* Hero */
+  .hero {
+    padding: clamp(104px, 17vw, 176px) 0 clamp(56px, 10vw, 96px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero h1 {
+    font-size: clamp(2.6rem, 11.5vw, 7rem);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 1;
+  }
+
+  .hero h1 span { display: block; }
+  .hero h1 .second { color: var(--muted); }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+    padding: 7px 16px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+
+  .tag::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Sections */
+  section {
+    padding: clamp(48px, 8vw, 80px) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  h2 {
+    margin-bottom: 24px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .about { padding: clamp(64px, 11vw, 128px) 0; }
+
+  .about p {
+    font-size: clamp(1.9rem, 6vw, 4.25rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.04em;
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
+
+  /* Program cards */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 28px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    transition: transform 0.6s var(--ease), box-shadow 0.6s var(--ease), border-color 0.6s ease;
+  }
+
+  .card h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .card p { color: var(--muted); font-size: 0.97rem; }
+
+  .card .stack {
+    margin-top: auto;
+    padding-top: 14px;
+    font-size: 0.85rem;
+  }
+
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin-top: 6px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .card-meta .count {
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+    text-decoration: none;
+  }
+
+  .arrow {
+    display: inline-block;
+    transition: transform 0.35s var(--ease), color 0.35s ease;
+  }
+
+  /* Rows: what's inside */
+  .rows { list-style: none; border-top: 1px solid var(--line); }
+
+  .rows li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rows-label { flex: none; font-size: 0.95rem; color: var(--muted); }
+
+  .rows-value {
+    min-width: 0;
+    font-size: clamp(1rem, 3vw, 1.2rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-align: right;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition: color 0.35s ease;
+  }
+
+  /* Compare table */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+
+  th, td {
+    padding: 16px 20px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+
+  tr:last-child th, tr:last-child td { border-bottom: none; }
+
+  thead th {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  tbody th { font-weight: 500; color: var(--muted); }
+
+  td { font-variant-numeric: tabular-nums; }
+
+  /* Run */
+  .run-text { max-width: 65ch; color: var(--muted); font-size: 0.97rem; }
+  .run-text + .run-text { margin-top: 12px; }
+
+  pre {
+    margin: 0 0 20px;
+    padding: 22px 24px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  pre .prompt { color: var(--muted); user-select: none; }
+
+  /* CTA */
+  .cta { border-bottom: none; }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    width: 100%;
+    padding: 30px 34px;
+    font-size: clamp(1.2rem, 3.2vw, 1.65rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #ffffff;
+    background: var(--accent);
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: background 0.45s ease, color 0.45s ease;
+  }
+
+  .btn:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
+
+  .card-link:focus-visible, .rows-value:focus-visible, .foot-link:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  footer {
+    padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  footer .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 16px;
+  }
+
+  .foot-link { color: var(--muted); text-decoration: none; transition: color 0.35s ease; }
+
+  @media (hover: hover) {
+    .lang:hover, .theme:hover { border-color: var(--muted); }
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: var(--hover-line);
+      box-shadow: 0 20px 40px -24px var(--shadow);
+    }
+    .card-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .card-link:hover .arrow { transform: translate(2px, -2px); }
+    a.rows-value:hover { color: var(--accent-ink); }
+    a.rows-value:hover .arrow { color: var(--accent-ink); transform: translate(2px, -2px); }
+    .foot-link:hover { color: var(--accent-ink); }
+    .btn:hover { background: var(--inv-bg); color: var(--inv-fg); }
+    .btn:hover .arrow { transform: translateX(8px); }
+  }
+
+  @media (max-width: 720px) {
+    .container {
+      padding-left: max(20px, env(safe-area-inset-left, 0px));
+      padding-right: max(20px, env(safe-area-inset-right, 0px));
+    }
+    .controls { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); gap: 6px; }
+    .grid { grid-template-columns: 1fr; }
+    .card { padding: 22px; }
+    .rows li { flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 0; }
+    .rows-value { text-align: left; }
+    th, td { padding: 14px 16px; }
+    .btn { padding: 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+
+<div class="controls">
+  <button class="theme" id="theme-toggle" type="button" role="switch" aria-checked="true" aria-label="Dark theme">
+    <span class="theme-thumb" aria-hidden="true"></span>
+    <span class="theme-opt sun" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </span>
+    <span class="theme-opt moon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </span>
+  </button>
+
+  <button class="lang" id="lang-toggle" type="button" aria-label="Переключить на русский" data-current="en">
+    <span class="lang-thumb" aria-hidden="true"></span>
+    <span class="lang-opt is-active" data-lang="en">EN</span>
+    <span class="lang-opt" data-lang="ru">RU</span>
+  </button>
+</div>
+
+<header class="hero">
+  <div class="container">
+    <h1><span>SysPulse</span><span class="second">FastSysPulse</span></h1>
+    <span class="tag">Python · Linux · CLI</span>
+  </div>
+</header>
+
+<main>
+  <section class="about">
+    <div class="container">
+      <h2 data-i18n="about_title">About</h2>
+      <p data-i18n="about_text">Two terminal toolboxes for Linux. Check the network, ports, disk and system from one menu.</p>
+    </div>
+  </section>
+
+  <section class="programs">
+    <div class="container">
+      <h2 data-i18n="programs_title">Programs</h2>
+      <div class="grid">
+
+        <article class="card">
+          <h3>SysPulse</h3>
+          <p data-i18n="sys_text">Runs every command in its own kitty window and keeps the window open after the command ends.</p>
+          <p class="stack">Python · kitty · ss · nmap · fastfetch · htop</p>
+          <div class="card-meta">
+            <p class="count" data-lines="422">Project code: 422 lines</p>
+            <a class="card-link" href="https://github.com/mraz0tix-code/SysPulse/blob/main/SysPulse.py" target="_blank" rel="noopener noreferrer">
+              <span data-i18n="app_link">App on GitHub</span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>FastSysPulse</h3>
+          <p data-i18n="fast_text">The same menus, but everything runs in your current terminal. No new windows and no pauses.</p>
+          <p class="stack">Python · ss · nmap · fastfetch · htop</p>
+          <div class="card-meta">
+            <p class="count" data-lines="418">Project code: 418 lines</p>
+            <a class="card-link" href="https://github.com/mraz0tix-code/SysPulse/blob/main/FastSysPulse.py" target="_blank" rel="noopener noreferrer">
+              <span data-i18n="app_link">App on GitHub</span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="inside">
+    <div class="container">
+      <h2 data-i18n="inside_title">What is inside</h2>
+      <ul class="rows">
+        <li>
+          <span class="rows-label">Toolbox</span>
+          <span class="rows-value">ping · uname · ss · fastfetch · disk · htop · reboot · poweroff</span>
+        </li>
+        <li>
+          <span class="rows-label">NetPulse</span>
+          <span class="rows-value">ping · ss · nmap -sS -sV -O</span>
+        </li>
+        <li>
+          <span class="rows-label" data-i18n="calc_label">Calculator</span>
+          <span class="rows-value" data-i18n="calc_value">add, subtract, multiply, divide</span>
+        </li>
+        <li>
+          <span class="rows-label" data-i18n="site_label">Website</span>
+          <a class="rows-value" href="https://mraz0tix-code.github.io/" target="_blank" rel="noopener noreferrer">mraz0tix-code.github.io<span class="arrow" aria-hidden="true"> ↗</span></a>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="diff">
+    <div class="container">
+      <h2 data-i18n="diff_title">The difference</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">SysPulse</th>
+              <th scope="col">FastSysPulse</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" data-i18n="row_where">Where commands run</th>
+              <td data-i18n="where_sys">Separate kitty window</td>
+              <td data-i18n="where_fast">Current terminal</td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="row_pause">Pause before launch</th>
+              <td data-i18n="pause_sys">0.5 to 1 s</td>
+              <td data-i18n="pause_fast">None</td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="row_kitty">Needs kitty</th>
+              <td data-i18n="yes">Yes</td>
+              <td data-i18n="no">No</td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="row_code">Code</th>
+              <td data-lines="422" data-short="1">422 lines</td>
+              <td data-lines="418" data-short="1">418 lines</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="run">
+    <div class="container">
+      <h2 data-i18n="run_title">Run</h2>
+      <pre><code><span class="prompt">$ </span>python SysPulse.py
+<span class="prompt">$ </span>python FastSysPulse.py</code></pre>
+      <p class="run-text" data-i18n="run_need">Needs Linux and Python 3. Menu items call ss, fastfetch, htop and nmap, so install the ones you use. SysPulse also needs kitty.</p>
+      <p class="run-text" data-i18n="run_warn">Reboot, shutdown and the Nmap scan call sudo. Scan only networks you own or have permission to test.</p>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <a class="btn" href="https://github.com/mraz0tix-code/SysPulse" target="_blank" rel="noopener noreferrer">
+        <span data-i18n="cta">Source on GitHub</span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>© mraz0tix</span>
+    <a class="foot-link" href="https://mraz0tix-code.github.io/" target="_blank" rel="noopener noreferrer" data-i18n="foot_back">Portfolio</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var dict = {
+    ru: {
+      about_title: 'О проекте',
+      about_text: 'Два консольных набора инструментов для Linux. Сеть, порты, диск и система проверяются из одного меню.',
+      programs_title: 'Программы',
+      sys_text: 'Запускает каждую команду в отдельном окне kitty и оставляет окно открытым после завершения.',
+      fast_text: 'Те же меню, но всё работает в текущем терминале. Без новых окон и пауз.',
+      app_link: 'Приложение на GitHub',
+      inside_title: 'Что внутри',
+      calc_label: 'Калькулятор',
+      calc_value: 'сложение, вычитание, умножение, деление',
+      site_label: 'Сайт',
+      diff_title: 'Чем отличаются',
+      row_where: 'Где запускаются команды',
+      where_sys: 'Отдельное окно kitty',
+      where_fast: 'Текущий терминал',
+      row_pause: 'Пауза перед запуском',
+      pause_sys: '0,5–1 с',
+      pause_fast: 'Нет',
+      row_kitty: 'Нужен kitty',
+      yes: 'Да',
+      no: 'Нет',
+      row_code: 'Код',
+      run_title: 'Запуск',
+      run_need: 'Нужны Linux и Python 3. Пункты меню вызывают ss, fastfetch, htop и nmap, поэтому установите те, которыми пользуетесь. Для SysPulse нужен ещё kitty.',
+      run_warn: 'Перезагрузка, выключение и сканирование Nmap вызывают sudo. Сканируйте только свои сети или те, на проверку которых есть разрешение.',
+      cta: 'Исходный код на GitHub',
+      foot_back: 'Портфолио',
+      theme_label: 'Тёмная тема'
+    },
+    en: {
+      about_title: 'About',
+      about_text: 'Two terminal toolboxes for Linux. Check the network, ports, disk and system from one menu.',
+      programs_title: 'Programs',
+      sys_text: 'Runs every command in its own kitty window and keeps the window open after the command ends.',
+      fast_text: 'The same menus, but everything runs in your current terminal. No new windows and no pauses.',
+      app_link: 'App on GitHub',
+      inside_title: 'What is inside',
+      calc_label: 'Calculator',
+      calc_value: 'add, subtract, multiply, divide',
+      site_label: 'Website',
+      diff_title: 'The difference',
+      row_where: 'Where commands run',
+      where_sys: 'Separate kitty window',
+      where_fast: 'Current terminal',
+      row_pause: 'Pause before launch',
+      pause_sys: '0.5 to 1 s',
+      pause_fast: 'None',
+      row_kitty: 'Needs kitty',
+      yes: 'Yes',
+      no: 'No',
+      row_code: 'Code',
+      run_title: 'Run',
+      run_need: 'Needs Linux and Python 3. Menu items call ss, fastfetch, htop and nmap, so install the ones you use. SysPulse also needs kitty.',
+      run_warn: 'Reboot, shutdown and the Nmap scan call sudo. Scan only networks you own or have permission to test.',
+      cta: 'Source on GitHub',
+      foot_back: 'Portfolio',
+      theme_label: 'Dark theme'
+    }
+  };
+
+  var root = document.documentElement;
+  var toggle = document.getElementById('lang-toggle');
+  var options = toggle.querySelectorAll('[data-lang]');
+  var themeBtn = document.getElementById('theme-toggle');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var current = 'en';
+  var timer = null;
+  var themeTimer = null;
+
+  function ruLines(n) {
+    var d = n % 10, dd = n % 100;
+    if (d === 1 && dd !== 11) return 'строка';
+    if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'строки';
+    return 'строк';
+  }
+
+  function renderLines(lang) {
+    document.querySelectorAll('[data-lines]').forEach(function (el) {
+      var n = parseInt(el.getAttribute('data-lines'), 10);
+      var short = el.hasAttribute('data-short');
+      if (lang === 'en') {
+        el.textContent = (short ? '' : 'Project code: ') + n + (n === 1 ? ' line' : ' lines');
+      } else {
+        el.textContent = (short ? '' : 'Код проекта: ') + n + ' ' + ruLines(n);
+      }
+    });
+  }
+
+  function render(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var text = dict[lang][el.getAttribute('data-i18n')];
+      if (text) el.textContent = text;
+    });
+    renderLines(lang);
+    themeBtn.setAttribute('aria-label', dict[lang].theme_label);
+    root.lang = lang;
+  }
+
+  function markActive(lang) {
+    toggle.setAttribute('data-current', lang);
+    options.forEach(function (o) {
+      o.classList.toggle('is-active', o.getAttribute('data-lang') === lang);
+    });
+    toggle.setAttribute('aria-label', lang === 'ru' ? 'Switch to English' : 'Переключить на русский');
+  }
+
+  function setLang(lang) {
+    if (lang === current) return;
+    current = lang;
+    markActive(lang);
+
+    var nodes = document.querySelectorAll('[data-i18n], [data-lines]');
+    nodes.forEach(function (n) { n.classList.add('is-fading'); });
+
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      render(lang);
+      nodes.forEach(function (n) { n.classList.remove('is-fading'); });
+    }, reduceMotion ? 0 : 230);
+  }
+
+  function syncTheme() {
+    var dark = root.getAttribute('data-theme') !== 'light';
+    themeBtn.setAttribute('aria-checked', dark ? 'true' : 'false');
+  }
+
+  function setTheme(theme) {
+    if (!reduceMotion) {
+      root.classList.add('theme-anim');
+      clearTimeout(themeTimer);
+      themeTimer = setTimeout(function () { root.classList.remove('theme-anim'); }, 500);
+    }
+    if (theme === 'light') root.setAttribute('data-theme', 'light');
+    else root.removeAttribute('data-theme');
+    syncTheme();
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+  }
+
+  markActive('en');
+  render('en');
+  syncTheme();
+
+  toggle.addEventListener('click', function () {
+    setLang(current === 'ru' ? 'en' : 'ru');
+  });
+
+  themeBtn.addEventListener('click', function () {
+    setTheme(root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+  });
+})();
+</script>
+
+</body>
+</html>
