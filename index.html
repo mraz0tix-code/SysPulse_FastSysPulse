@@ -349,6 +349,8 @@
   /* CTA */
   .cta { border-bottom: none; }
 
+  .btns { display: flex; flex-direction: column; gap: 16px; }
+
   .btn {
     display: flex;
     align-items: center;
@@ -570,10 +572,16 @@
 
   <section class="cta">
     <div class="container">
-      <a class="btn" href="https://github.com/mraz0tix-code/SysPulse" target="_blank" rel="noopener noreferrer">
-        <span data-i18n="cta">Source on GitHub</span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
+      <div class="btns">
+        <a class="btn" href="https://mraz0tix-code.github.io/NetPulse/" target="_blank" rel="noopener noreferrer">
+          <span data-i18n="net_site_cta">NetPulse website</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="btn" href="https://github.com/mraz0tix-code/SysPulse" target="_blank" rel="noopener noreferrer">
+          <span data-i18n="cta">Source on GitHub</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
     </div>
   </section>
 </main>
@@ -615,6 +623,7 @@
       run_title: 'Запуск',
       run_need: 'Нужны Linux и Python 3. Пункты меню вызывают ss, fastfetch, htop и nmap, поэтому установите те, которыми пользуетесь. Для SysPulse нужен ещё kitty.',
       run_warn: 'Перезагрузка, выключение и сканирование Nmap вызывают sudo. Сканируйте только свои сети или те, на проверку которых есть разрешение.',
+      net_site_cta: 'Сайт про NetPulse',
       cta: 'Исходный код на GitHub',
       foot_back: 'Портфолио',
       theme_label: 'Тёмная тема'
@@ -644,6 +653,7 @@
       run_title: 'Run',
       run_need: 'Needs Linux and Python 3. Menu items call ss, fastfetch, htop and nmap, so install the ones you use. SysPulse also needs kitty.',
       run_warn: 'Reboot, shutdown and the Nmap scan call sudo. Scan only networks you own or have permission to test.',
+      net_site_cta: 'NetPulse website',
       cta: 'Source on GitHub',
       foot_back: 'Portfolio',
       theme_label: 'Dark theme'
